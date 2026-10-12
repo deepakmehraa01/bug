@@ -1,15 +1,26 @@
-name: Build Android Debug APK
+name: Build Android APKs and Test Server
 on:
   workflow_dispatch:
   push:
     paths:
       - 'app/**'
+      - 'viewer/**'
+      - 'server/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'viewer/**'
+      - 'server/**'
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle.properties'
       - '.github/workflows/android.yml'
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,8 +34,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - run: gradle assembleDebug --no-daemon
+      - run: gradle :app:assembleDebug :viewer:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: activity-monitor-debug
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: activity-viewer-debug
+          path: viewer/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+      - run: mvn -B -f server/pom.xml test
